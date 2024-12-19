@@ -1,0 +1,3 @@
+[submodule "r-libcint/libcint"]
+	path = r-libcint/libcint
+	url = https://github.com/sunqm/libcint.git

@@ -1,0 +1,8 @@
+[workspace]
+resolver = "3"
+members = [ 
+    "croc-parse",
+    "r-libcint",
+    "croc-mole",
+]
+
