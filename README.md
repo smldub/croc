@@ -13,6 +13,7 @@ Most of the difficulty here arises due to the r-libcint project (a wrapper aroun
 
 ### Prereqs
 cmake: necessary, for now, in order to use libcint for electron integrals.
+
 rust-nightly: this is necessary for [bindgen](https://crates.io/crates/bindgen) (I think)
 
 ### Super important git command
