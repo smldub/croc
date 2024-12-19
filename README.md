@@ -16,6 +16,8 @@ cmake: necessary, for now, in order to use libcint for electron integrals.
 
 rust-nightly: this is necessary for [bindgen](https://crates.io/crates/bindgen) (I think)
 
+clang: was necessary for compiling libcint on wsl2
+
 ### Super important git command
 In order to get the libcint library you must recusively call the submodules during the clone.
 ``` bash
