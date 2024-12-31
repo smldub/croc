@@ -108,12 +108,14 @@ pub fn parse(path: &Path, atom_list: Vec<String>) -> Result<Vec<Atom>, ()> {
     for atom in atom_list.iter() {
         match parse_file_for_atom(file.as_str(), atom.as_str()) {
             Ok(a) => {
-                atoms.push(Atom {
+                let mut t_atom = Atom {
                     symb: String::from(atom),
                     gtos: a.1.into_iter()
                             .map(|x| GTO::from_parsed_output(x).unwrap()).flatten()
                             .collect::<Vec<GTO>>()
-                })
+                };
+                t_atom.gtos.sort_by_key(|gto| gto.ang_mom);
+                atoms.push(t_atom);
             },
             _ => println!("Error"),
         }
@@ -136,7 +138,6 @@ mod tests {
         let path = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/basis_files/sto-3g.dat"));
         let atom_list = Vec::from([String::from("H")]);
         let atoms = vec![Atom{symb:String::from("H"), gtos: vec![GTO{ang_mom:0,num_prim:3,num_cont:1,orbs:vec![vec![3.42525091,0.15432897],vec![0.62391373,0.53532814],vec![0.16885540,0.44463454]]}]}];
-
         assert_eq!(atoms,parse(path,atom_list).unwrap());
     }
 }      

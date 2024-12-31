@@ -9,3 +9,5 @@ statrs = "0.18.0"
 itertools = "0.13.0"
 croc-parse = { path = "../croc-parse" }
 r-libcint = { path = "../r-libcint" }
+ndarray = { version = "0.16.1", features = ["approx"] }
+ndarray-npy = "0.9.1"
