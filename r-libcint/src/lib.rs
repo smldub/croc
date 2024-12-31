@@ -76,11 +76,15 @@ impl CINTR2CDATA {
             c_cache:(std::ptr::null_mut::<f64>(), 0, 0),
             c_nbas: 0 as c_int,
             c_natm: 0 as c_int,
-            cint_type: CintType::Cartesian,
+            cint_type: CintType::Spheric,
             }
     }
         pub fn set_cint_type(&mut self, ctype: CintType) {
         self.cint_type = ctype;
+    }
+
+    pub fn get_nbas(&self)-> usize {
+        self.c_nbas as usize
     }
 
     pub fn initial_r2c(&mut self, 
@@ -163,8 +167,8 @@ impl CINTR2CDATA {
         let mut dim: i32;
         unsafe {
             dim = match self.cint_type {
-                CintType::Spheric  => CINTcgto_spheric(index as c_int, self.c_bas.0) as i32,
-                CintType::Cartesian=> CINTcgto_cart(index as c_int, self.c_bas.0) as i32,
+                CintType::Spheric  => CINTcgtos_spheric(index as c_int, self.c_bas.0) as i32,
+                CintType::Cartesian=> CINTcgtos_cart(index as c_int, self.c_bas.0) as i32,
             };
         }
         dim
@@ -202,6 +206,7 @@ impl CINTR2CDATA {
         }
        new_buf
     }
+
     pub fn int1e_ovlp(&mut self, i:i32,j:i32) -> Vec<f64> {
         let mut di: i32 = self.cint_cgto_rust(i);
         let mut dj: i32 = self.cint_cgto_rust(j);
@@ -235,6 +240,41 @@ impl CINTR2CDATA {
         }
         new_buf
     }
+
+    pub fn int1e_ovlp_full(&mut self, nbas: i32, nao: usize) -> Vec<f64> {
+        let mut shls: [c_int; 2] = [0 as c_int, nbas as c_int];
+        let mut shls = ManuallyDrop::new(shls);
+        let c_shls = shls.as_mut_ptr();
+    
+        let buf_len = (nao*nao);
+        let mut buf: Vec<f64> = Vec::with_capacity(buf_len);
+        let mut buf = ManuallyDrop::new(buf);
+        let (c_buf, buf_cap) = (buf.as_mut_ptr() as *mut f64, buf.capacity());
+    
+        let mut new_buf:Vec<f64>;
+        let mut dims: [c_int; 2] = [nao as c_int, nao as c_int];
+        let mut dims = ManuallyDrop::new(dims);
+        let c_dims = dims.as_mut_ptr();
+        unsafe {
+            match self.cint_type {
+                CintType::Spheric => int1e_ovlp_sph(
+                           c_buf, c_dims, c_shls,
+                             self.c_atm.0, self.c_natm,
+                             self.c_bas.0,self.c_nbas,
+                             self.c_env.0,
+                             self.c_opt.0, self.c_cache.0),
+                CintType::Cartesian => int1e_ovlp_cart(
+                           c_buf, c_dims, c_shls,
+                             self.c_atm.0, self.c_natm,
+                             self.c_bas.0,self.c_nbas,
+                             self.c_env.0,
+                             self.c_opt.0, self.c_cache.0),
+            };
+            new_buf = Vec::from_raw_parts(c_buf, buf_len, buf_cap);
+        }
+        new_buf
+    }
+
     pub fn int1e_nuc(&mut self, i:i32,j:i32) -> Vec<f64> {
         let mut di: i32 = self.cint_cgto_rust(i);
         let mut dj: i32 = self.cint_cgto_rust(j);
