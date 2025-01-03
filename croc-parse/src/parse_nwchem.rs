@@ -25,7 +25,7 @@ impl Atom {
     }
 }
 
-//TODO: potentiall derive getters to cut down on boilerplate
+//TODO: potentially derive getters to cut down on boilerplate
 #[derive(Debug,PartialEq)]
 pub struct GTO {
     //Angular momentum

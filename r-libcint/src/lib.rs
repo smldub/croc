@@ -58,6 +58,7 @@ impl CINTR2CDATA {
     /// by GTO it is necessary to store "env offset" (index of start of cont and prim
     /// coeffs) in basis array for each GTO
     ///
+    ///
     /// c_atm[i][0]: ith atom atomic number
     /// c_atm[i][1]: ith atom coord offset (normally 20+i*3, see env definition)
     /// c_atm[i][2]: TODO
@@ -173,7 +174,7 @@ impl CINTR2CDATA {
         }
         dim
     }
-    pub fn int2e(&mut self, i:i32,j:i32,k:i32,l:i32) -> Vec<f64> {
+    pub fn int2e(&self, i:i32,j:i32,k:i32,l:i32) -> Vec<f64> {
         let mut di = self.cint_cgto_rust(i);
         let mut dj = self.cint_cgto_rust(j);
         let mut dk = self.cint_cgto_rust(k);
@@ -207,7 +208,7 @@ impl CINTR2CDATA {
        new_buf
     }
 
-    pub fn int1e_ovlp(&mut self, i:i32,j:i32) -> Vec<f64> {
+    pub fn int1e_ovlp(&self, i:i32,j:i32) -> Vec<f64> {
         let mut di: i32 = self.cint_cgto_rust(i);
         let mut dj: i32 = self.cint_cgto_rust(j);
     
@@ -275,7 +276,7 @@ impl CINTR2CDATA {
         new_buf
     }
 
-    pub fn int1e_nuc(&mut self, i:i32,j:i32) -> Vec<f64> {
+    pub fn int1e_nuc(&self, i:i32,j:i32) -> Vec<f64> {
         let mut di: i32 = self.cint_cgto_rust(i);
         let mut dj: i32 = self.cint_cgto_rust(j);
     
@@ -309,7 +310,7 @@ impl CINTR2CDATA {
         new_buf
     }
 
-    pub fn int1e_kin(&mut self, i:i32,j:i32) -> Vec<f64> {
+    pub fn int1e_kin(&self, i:i32,j:i32) -> Vec<f64> {
         let mut di: i32 = self.cint_cgto_rust(i);
         let mut dj: i32 = self.cint_cgto_rust(j);
 

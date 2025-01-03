@@ -1,4 +1,4 @@
-mod mol;
+pub mod mol;
 
 use phf::{phf_ordered_map, OrderedMap};
 // Map from Element name to atomic number

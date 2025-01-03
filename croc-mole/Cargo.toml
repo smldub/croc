@@ -10,4 +10,9 @@ itertools = "0.13.0"
 croc-parse = { path = "../croc-parse" }
 r-libcint = { path = "../r-libcint" }
 ndarray = { version = "0.16.1", features = ["approx"] }
+[dev-dependencies]
 ndarray-npy = "0.9.1"
+criterion = "0.5.1"
+[[bench]] 
+name = "benchmark"
+harness = false

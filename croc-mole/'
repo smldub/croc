@@ -11,7 +11,7 @@ const BASIS_EXCEPTIONS: [char;2] = ['*','+'];
 pub struct MolBuilder {
     /// The jth atom's name and coords is stored as 
     /// atoms[j] = (name,(x,y,z))
-    pub atoms: String,//Vec<(String,f64,f64,f64)>,
+    pub atoms: Vec<(String,f64,f64,f64)>,
     /// Name of basis (see TODO for set of available bases)
     pub basis: String,
     // c_dat contains the correctly formatted data for libcint
@@ -22,15 +22,15 @@ impl MolBuilder {
     /// Generates the default MolBuilder Object
     pub fn new() -> Self {
         Self{
-            atoms: String::new(),
+            atoms: Vec::new(),
             basis: String::new(),
         }
     }
     
     /// Method for setting basis string
     /// Check BASIS_MAP in lib.rs for available bases
-    pub fn set_basis(mut self, basis_name: &str) -> MolBuilder {
-        self.basis = String::from(basis_name);
+    pub set_basis(mut self, basis_name: &str) -> MolBuilder {
+        self.basis = basis_name;
         self
     }
 
@@ -38,8 +38,8 @@ impl MolBuilder {
     /// Format = "a_1 x_1 y_1 z_1; a_2 x_2 y_2 z_2;...."
     /// where a_i is atomic symbol for ith atom and 
     /// x_i,y_i,z_i are cartesian coordinates for ith atom (in bohr)
-    pub fn set_atoms_str(mut self, atm_coords: &str) -> MolBuilder {
-        self.atoms = String::from(atm_coords);
+    pub set_atom_str(mut self, atm_coords: &str) -> MolBuilder {
+        self.atoms = atm_coords;
         self
     }
 
@@ -92,17 +92,12 @@ impl MolBuilder {
 
     /// Build method for Mol object
     pub fn build(&self) -> Result<Mol,&str> {
-        // Check that basis and atom info were formatted correctly
-        let basis = self.format_basis(self.basis.as_str())?;
-        let atoms = self.format_atoms_str(self.atoms.as_str())?;
-
+        // Check that 
+        let basis = self.format_basis(self.basis)?;
+        let atoms = self.format_atoms_str(self.atoms)?;
         //TODO make this unique atoms (probably with HashSet)
-        // Parse coordinate information for the atomic symbols
         let atom_strs = atoms.iter().map(|x| x.0.clone()).collect::<Vec<String>>();
-        // Get the basis information for the atomic symbols
         let atom_vec = parse_nwchem::get_basis_info(BASIS_MAP.get(&basis).unwrap(),atom_strs).unwrap();
-        
-        // Create the c_atm array in the format of libcint (see r-libcint for format)
         let c_atm: Vec<Vec<i32>> =  atom_vec.iter().enumerate()
                              .map(|(i,atom)| 
                                     vec![*ATOMIC_NUMBER_MAP.get(atom.get_symb()).unwrap(),
@@ -111,8 +106,6 @@ impl MolBuilder {
                                     0_i32,
                                     0_i32,
                                     0_i32]).collect();
-
-        // Initializing the c_bas array in the format of libcint (see r-libcint for format)
         let mut c_bas: Vec<Vec<Vec<i32>>> = atom_vec.iter().enumerate()
                                     .map(|(i,atom)| 
                                         atom.get_gtos().iter()
@@ -129,14 +122,11 @@ impl MolBuilder {
                                                 ]).collect::<Vec<Vec<i32>>>()
                                             ).collect();
 
-        // Initializing the c_env array in the format of libcint (see r-libcint for format)
-        let mut c_env: Vec<f64> = vec![Vec::from(&[0_f64;20]),atoms.iter().map(|atom| vec![atom.1,atom.2,atom.3]).flatten().collect()].concat();
+        let mut c_env: Vec<f64> = vec![Vec::from(&[0_f64;20]),self.atoms.iter().map(|atom| vec![atom.1,atom.2,atom.3]).flatten().collect()].concat();
 
-        // In this section we normalize our GTOs, put that 
-        // information into the c_env array. We also store index
-        // information in the c_bas array
         for (p,atom) in atom_vec.iter().enumerate() {
             for (q,gto) in atom.get_gtos().iter().enumerate(){
+                //let mut cs = gto.get_orbs().iter().map(|vec| vec[1..].iter().rev().map(|x|*x).collect::<Vec<f64>>()).collect::<Vec<Vec<f64>>>();
                 let mut cs = gto.get_orbs().iter().map(|vec| Vec::from(&vec[1..])).collect::<Vec<Vec<f64>>>();
                 let mut es = gto.get_orbs().iter().map(|vec| vec[0]).collect::<Vec<f64>>();
                 cs = cs.iter().enumerate().map(|(i,vec)| {
@@ -168,13 +158,9 @@ impl MolBuilder {
                 c_env.extend(norm_flat)
             }
         }
-        // Finally, we can format everything for the creation of the CINTR2CDATA object (I didn't name it)
         let c_bas = c_bas.concat();
         let mut c_dat = cint::CINTR2CDATA::new();
         c_dat.initial_r2c(&c_atm,c_atm.len() as i32,&c_bas,c_bas.len() as i32, c_env);
-
-        // Actually finally, we generate our Mol object (see Mol Struct for description of these
-        // objects)
         let nbas = c_dat.get_nbas();
         let shls = (0..nbas as i32).map(|i| c_dat.cint_cgto_rust(i) as usize).collect::<Vec<usize>>();
         let mut dims: Vec<usize> = Vec::with_capacity(shls.len()+1);
@@ -363,56 +349,54 @@ mod tests {
     #[test]
     fn basis_success() {
         let mut mol = MolBuilder::new();
-        assert!(mol.format_basis("sto-3g").is_ok());
-        assert!(mol.format_basis("sto-3g!^%&(&^%$").is_ok());
-        assert!(mol.format_basis("sto3g     ").is_ok());
-        assert!(mol.format_basis("     s   to-3g").is_ok());
-        assert!(mol.format_basis("     STO3g").is_ok());
+        assert!(mol.set_basis("sto-3g").is_ok());
+        assert!(mol.set_basis("sto-3g!^%&(&^%$").is_ok());
+        assert!(mol.set_basis("sto3g     ").is_ok());
+        assert!(mol.set_basis("     s   to-3g").is_ok());
+        assert!(mol.set_basis("     STO3g").is_ok());
     }
 
     #[test]
     fn basis_fails() {
         let mut mol = MolBuilder::new();
-        assert!(mol.format_basis("sto-3g*").is_err());
-        assert!(mol.format_basis("sto-3g!^%&*(*&^%$a").is_err());
-        assert!(mol.format_basis("sto3g  b   ").is_err());
-        assert!(mol.format_basis("  t   sto-3g").is_err());
-        assert!(mol.format_basis("     STO3g++").is_err());
+        assert!(mol.set_basis("sto-3g*").is_err());
+        assert!(mol.set_basis("sto-3g!^%&*(*&^%$a").is_err());
+        assert!(mol.set_basis("sto3g  b   ").is_err());
+        assert!(mol.set_basis("  t   sto-3g").is_err());
+        assert!(mol.set_basis("     STO3g++").is_err());
     }
 
     #[test]
     fn atoms_success() {
         let mut mol = MolBuilder::new();
-        let result_atoms = mol.format_atoms_str(
+        assert!(
+            mol.set_atoms_str(
             "H 0 0.000000000000 .0;
              He .8 1.0 2.0"
-            );
-        assert!(result_atoms.is_ok());
-        let result_atoms = result_atoms.unwrap();
+            ).is_ok());
         let test_atoms = Vec::from([("H".to_string(), 0_f64, 0_f64, 0_f64),("He".to_string(), 0.8_f64, 1_f64, 2_f64)]);
         for i in 0..2 {
-            assert!(test_atoms[i] == result_atoms[i])
+            assert!(test_atoms[i] == mol.atoms[i])
         }
         let mut mol = MolBuilder::new();
-        let result_atoms = mol.format_atoms_str(
-            "H 0 0.000000000000 .0;
+        assert!(
+            mol.set_atoms_str(
+            "H 0 0.000000000000 .0
              He .8 1.0 2.0"
-            );
-        assert!(result_atoms.is_ok());
-        let result_atoms = result_atoms.unwrap();
-        //let test_atoms = Vec::from([("H".to_string(), 0_f64, 0_f64, 0_f64),("He".to_string(), 0.8_f64, 1_f64, 2_f64)]);
+            ).is_ok());
+        let test_atoms = Vec::from([("H".to_string(), 0_f64, 0_f64, 0_f64),("He".to_string(), 0.8_f64, 1_f64, 2_f64)]);
         for i in 0..2 {
-            assert!(test_atoms[i] == result_atoms[i])
+            assert!(test_atoms[i] == mol.atoms[i])
         }
     }
 
     #[test]
     fn test_int1e_ovlp() {
         fn run(coords: &str, basis: &str, file: &str) {
-            let mut mol = MolBuilder::new()
-                            .set_atoms_str(coords)
-                            .set_basis(basis)
-                            .build().unwrap();
+            let mut mol = MolBuilder::new();
+            let _ = mol.set_atoms_str(coords);
+            let _ = mol.set_basis(basis);
+            let mol = mol.build();
             let ovl = mol.get_int1e_ovlp();
             let reader = File::open(format!("{}{}",env!("CARGO_MANIFEST_DIR"),file)).unwrap();
             let temp = Array2::<f64>::read_npy(reader).unwrap();
@@ -435,10 +419,10 @@ mod tests {
     #[test]
     fn test_int1e_nuc() {
         fn run(coords: &str, basis: &str, file: &str) {
-            let mut mol = MolBuilder::new()
-                          .set_atoms_str(coords)
-                          .set_basis(basis)
-                          .build().unwrap();
+            let mut mol = MolBuilder::new();
+            let _ = mol.set_atoms_str(coords);
+            let _ = mol.set_basis(basis);
+            let mol = mol.build();
             let ovl = mol.get_int1e_nuc();
             let reader = File::open(format!("{}{}",env!("CARGO_MANIFEST_DIR"),file)).unwrap();
             let temp = Array2::<f64>::read_npy(reader).unwrap();
@@ -456,10 +440,10 @@ mod tests {
     #[test]
     fn test_int1e_kin() {
         fn run(coords: &str, basis: &str, file: &str) {
-            let mut mol = MolBuilder::new()
-                          .set_atoms_str(coords)
-                          .set_basis(basis)
-                          .build().unwrap();
+            let mut mol = MolBuilder::new();
+            let _ = mol.set_atoms_str(coords);
+            let _ = mol.set_basis(basis);
+            let mol = mol.build();
             let ovl = mol.get_int1e_kin();
             let reader = File::open(format!("{}{}",env!("CARGO_MANIFEST_DIR"),file)).unwrap();
             let temp = Array2::<f64>::read_npy(reader).unwrap();
@@ -478,10 +462,10 @@ mod tests {
     #[test]
     fn test_int2e() {
         fn run(coords: &str, basis: &str, file: &str) {
-            let mut mol = MolBuilder::new()
-                          .set_atoms_str(coords)
-                          .set_basis(basis)
-                          .build().unwrap();
+            let mut mol = MolBuilder::new();
+            let _ = mol.set_atoms_str(coords);
+            let _ = mol.set_basis(basis);
+            let mol = mol.build();
             let ovl = mol.get_int2e();
             let reader = File::open(format!("{}{}",env!("CARGO_MANIFEST_DIR"),file)).unwrap();
             let temp = Array4::<f64>::read_npy(reader).unwrap();
